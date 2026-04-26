@@ -2,11 +2,11 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import TelegramBot from 'node-telegram-bot-api';
-import { Message } from 'node-telegram-bot-api';
 import cron from 'node-cron';
 import { getCompanyNews } from './finnhub';
 
-const bot = new TelegramBot(process.env.BOT_TOKEN ?? '', { polling: true });
+const bot = new TelegramBot(process.env.BOT_TOKEN ?? '');
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const TOP_ITEMS_LEN = 10;
 const COMPANY_NAME_BY_SYMBOL: Record<string, string> = {
@@ -88,27 +88,40 @@ const formatCombinedNewsMessage = (
   )}`;
 };
 
-bot.getMe().then((me) => {
-  const linkRegex = new RegExp(`^\\/news$`, 'i');
+const sendDailyNews = async () => {
+  if (!TELEGRAM_CHAT_ID) {
+    console.error('TELEGRAM_CHAT_ID is not set, skipping daily news send.');
+    return;
+  }
 
-  bot.onText(linkRegex, async (msg: Message) => {
-    const today = toDateString(new Date());
-    const symbols = Object.keys(COMPANY_NAME_BY_SYMBOL);
-    const newsBySymbol = await Promise.all(
-      symbols.map(async (symbol) => {
-        const news = await getCompanyNews(symbol, today, today);
-        return { symbol, news };
-      })
-    );
+  const today = toDateString(new Date());
+  const symbols = Object.keys(COMPANY_NAME_BY_SYMBOL);
+  const newsBySymbol = await Promise.all(
+    symbols.map(async (symbol) => {
+      const news = await getCompanyNews(symbol, today, today);
+      return { symbol, news };
+    })
+  );
 
-    const combinedText = formatCombinedNewsMessage(newsBySymbol);
-    if (!combinedText) {
-      return;
-    }
+  const combinedText = formatCombinedNewsMessage(newsBySymbol);
+  if (!combinedText) {
+    return;
+  }
 
-    await bot.sendMessage(msg.chat.id, combinedText, {
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-    });
+  await bot.sendMessage(TELEGRAM_CHAT_ID, combinedText, {
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
   });
+};
+
+cron.schedule(
+  '30 9 * * *',
+  async () => {
+    await sendDailyNews();
+  },
+  { timezone: 'Asia/Singapore' }
+);
+
+bot.getMe().then((me) => {
+  console.log(`Bot started: @${me.username}`);
 });

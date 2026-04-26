@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --skipLibCheck",
     "typecheck": "tsc --noEmit --skipLibCheck",
-    "dev": "nodemon",
+    "start": "nodemon",
     "process:start": "pm2 start dist/index.js --max-memory-restart 300M",
     "process:stop": "pm2 stop index"
   },
