@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc --skipLibCheck",
     "typecheck": "tsc --noEmit --skipLibCheck",
-    "start": "nodemon"
+    "dev": "nodemon",
+    "start": "node dist/index.js"
   },
   "author": "Jackie",
   "license": "ISC",
