@@ -16,7 +16,29 @@ const COMPANY_NAME_BY_SYMBOL: Record<string, string> = {
   KO: 'Coca Cola',
 };
 
-const toDateString = (date: Date) => date.toISOString().slice(0, 10);
+const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
+
+const getDatePartsInTimeZone = (date: Date, timeZone: string) => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = formatter.formatToParts(date);
+  const year = Number(parts.find((part) => part.type === 'year')?.value);
+  const month = Number(parts.find((part) => part.type === 'month')?.value);
+  const day = Number(parts.find((part) => part.type === 'day')?.value);
+  return { year, month, day };
+};
+
+const getDateStringInTimeZone = (daysOffset: number, timeZone: string) => {
+  const now = new Date();
+  const { year, month, day } = getDatePartsInTimeZone(now, timeZone);
+  const zonedDate = new Date(Date.UTC(year, month - 1, day));
+  zonedDate.setUTCDate(zonedDate.getUTCDate() + daysOffset);
+  return zonedDate.toISOString().slice(0, 10);
+};
 
 const escapeHtml = (text: string) => {
   return text
@@ -70,6 +92,7 @@ const formatCombinedNewsMessage = (
   newsBySymbol: Array<{ symbol: string; news: any[] }>
 ): string | null => {
   const dateLabel = new Date().toLocaleDateString('en-US', {
+    timeZone: SINGAPORE_TIME_ZONE,
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -94,11 +117,11 @@ const sendDailyNews = async () => {
     return;
   }
 
-  const today = toDateString(new Date());
+  const newsDate = getDateStringInTimeZone(-1, SINGAPORE_TIME_ZONE);
   const symbols = Object.keys(COMPANY_NAME_BY_SYMBOL);
   const newsBySymbol = await Promise.all(
     symbols.map(async (symbol) => {
-      const news = await getCompanyNews(symbol, today, today);
+      const news = await getCompanyNews(symbol, newsDate, newsDate);
       return { symbol, news };
     })
   );
@@ -119,9 +142,5 @@ cron.schedule(
   async () => {
     await sendDailyNews();
   },
-  { timezone: 'Asia/Singapore' }
+  { timezone: SINGAPORE_TIME_ZONE }
 );
-
-bot.getMe().then((me) => {
-  console.log(`Bot started: @${me.username}`);
-});
