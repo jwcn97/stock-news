@@ -8,7 +8,7 @@ import { getCompanyNews } from './finnhub';
 const bot = new TelegramBot(process.env.BOT_TOKEN ?? '');
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-const TOP_ITEMS_LEN = 10;
+const TOP_ITEMS_LEN = 5;
 const COMPANY_NAME_BY_SYMBOL: Record<string, string> = {
   MSFT: 'Microsoft',
   MCO: 'Moody',
@@ -88,29 +88,6 @@ const formatNewsMessage = (symbol: string, items: any[]) => {
   return `📈 <b>${escapeHtml(symbol)}</b>\n\n${lines.join('\n\n')}`;
 };
 
-const formatCombinedNewsMessage = (
-  newsBySymbol: Array<{ symbol: string; news: any[] }>
-): string | null => {
-  const dateLabel = new Date().toLocaleDateString('en-US', {
-    timeZone: SINGAPORE_TIME_ZONE,
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  const sections = newsBySymbol
-    .map(({ symbol, news }) => formatNewsMessage(symbol, news))
-    .filter(Boolean);
-
-  if (!sections.length) {
-    return null;
-  }
-
-  return `🗞️ <b>Daily Stock News</b>\n<i>${escapeHtml(dateLabel)}</i>\n\n${sections.join(
-    '\n\n--------------------\n\n'
-  )}`;
-};
-
 const sendDailyNews = async () => {
   if (!TELEGRAM_CHAT_ID) {
     console.error('TELEGRAM_CHAT_ID is not set, skipping daily news send.');
@@ -126,15 +103,19 @@ const sendDailyNews = async () => {
     })
   );
 
-  const combinedText = formatCombinedNewsMessage(newsBySymbol);
-  if (!combinedText) {
+  const messagesBySymbol = newsBySymbol
+    .map(({ symbol, news }) => formatNewsMessage(symbol, news))
+    .filter(Boolean);
+  if (!messagesBySymbol.length) {
     return;
   }
 
-  await bot.sendMessage(TELEGRAM_CHAT_ID, combinedText, {
-    parse_mode: 'HTML',
-    disable_web_page_preview: true,
-  });
+  for (const message of messagesBySymbol) {
+    await bot.sendMessage(TELEGRAM_CHAT_ID, message, {
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+  }
 };
 
 cron.schedule(
