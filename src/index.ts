@@ -14,6 +14,7 @@ const COMPANY_NAME_BY_SYMBOL: Record<string, string> = {
   MCO: 'Moody',
   V: 'Visa',
   KO: 'Coca Cola',
+  CEG: 'Constellation Energy',
 };
 
 const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
